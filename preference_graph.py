@@ -7,9 +7,11 @@ from itertools import combinations
 class Edge:
     def __init__(self, _from, _to, _weight):
         '''
-        У структуры ребра 3 поля: откуда, куда и вес ребра.
-        Вес ребра \in {1, 2, 3},
-        Ребро с весом 1 -- самое любимое
+        Structure fields:
+            _from -- outgoing vertex
+            _to -- incoming vertex
+            _weight -- edges weight \in {1, 2, 3},
+            _weight = 1 is for the best preference
         '''
         self._from =  _from
         self._to  = _to
@@ -17,26 +19,32 @@ class Edge:
         
     def  __eq__(self, other):
         '''
-        Определяет оператор '=' на ребрах
+        Edge equality operator
         '''
         return (self._from == other._from and
                          self._to == other._to) 
         
         
 class PreferenceGraph:
-    def __init__(self, basic_edges_index, code):
+    def __init__(self, basic_graph_index, rest_edges_code):
         '''
-        edges -- список смежности 
-        (лист длины 9, для каждой из вершин хранится 
-        список ребер, которые из нее исходят)
+        Parameters:
+          basic_graph_index (int in {1, ..., 6}) -- one of 6 variants of basic 
+              graph G''
+          rest_edges_code (str) -- str of length 9 with information about rest 
+              edges for each vertex (5 ** 9 variants)
+          
+        Structure fields:
+          edges -- adjacency list 
+              (list of length 9 with all the outgoing edges for each vertex)
         '''
         self.edges = [[] for _ in range(9)]
-        self.add_basic_edges(basic_edges_index)
-        self.add_other_edges(code)
+        self.add_basic_edges(basic_graph_index)
+        self.add_other_edges(rest_edges_code)
         
     def show_edges(self):
         '''
-        Печатает все ребра
+        Prints all edges, for debug
         '''
         for i in range(9):
             for e in self.edges[i]:
@@ -46,7 +54,7 @@ class PreferenceGraph:
 
     def draw_edges(self):
         '''
-        Рисует картинку с графом
+        Graph visualization
         '''
         plt.figure(figsize=(16, 8))
         G = nx.DiGraph()
@@ -69,62 +77,63 @@ class PreferenceGraph:
         
     def add_edge(self, _from, _to, _weight):
         '''
-        Добавляет в список смежности ребро
+        Adds an edge to graph's adjacency list
         '''
         self.edges[_from].append(Edge(_from, _to, _weight))
         
         
-    def add_basic_edges(self, index):
+    def add_basic_edges(self, basic_graph_index):
         '''
-        index \in {0, 1, 2, 3, 4, 5}
-        В зависимости от индекса строится граф G''
-        (добавляются ребра веса 1)
+        Parameters:
+            basic_graph_index (int in {0, 1, 2, 3, 4, 5})
+        Builds graph's basic subgraph G'' of given index
+        (adds edges of weight=1)
         '''
-        if index == 0:
+        if basic_graph_index == 0:
             '''
-            цикл длины 9
+            Cycle of length 9
             '''
             for i in range(9):
                 self.add_edge(i % 9, (i + 1) % 9, 1)
-        elif index == 1:
+        elif basic_graph_index == 1:
             '''
-            цикл длины 6, отросток длины 3
+            Cycle of length 6 with tail of length 3
             '''
             for i in range(6):
                 self.add_edge(i % 6, (i + 1) % 6, 1)
             self.add_edge(6, 7, 1)
             self.add_edge(7, 8, 1)
             self.add_edge(8, 0, 1)    
-        elif index == 2:
+        elif basic_graph_index == 2:
             '''
-            цикл длины 6, откростки длины 2 и 1 подряд
+            Cycle of length 6, tails of length 2 and 1 near each other
             '''
             for i in range(6):
                 self.add_edge(i % 6, (i + 1) % 6, 1)
             self.add_edge(6, 1, 1)
             self.add_edge(7, 8, 1)
             self.add_edge(8, 0, 1)
-        elif index == 3:
+        elif basic_graph_index == 3:
             '''
-            цикл длины 6, отростки длины 2 и 1 через одну вершину
+            Cycle of length 6, tails of length 2 and 1 through one vertex
             '''
             for i in range(6):
                 self.add_edge(i % 6, (i + 1) % 6, 1)
             self.add_edge(6, 4, 1)
             self.add_edge(7, 8, 1)
             self.add_edge(8, 0, 1)
-        elif index == 4:
+        elif basic_graph_index == 4:
             '''
-            цикл длины 6, три отростка длины 1 подряд
+            Cycle of length 6, three tails of length 1 near each other
             '''
             for i in range(6):
                 self.add_edge(i % 6, (i + 1) % 6, 1)
             self.add_edge(6, 1, 1)
             self.add_edge(7, 2, 1)
             self.add_edge(8, 0, 1)
-        elif index == 5:
+        elif basic_graph_index == 5:
             '''
-            цикл длины 6, три отростка длины 1 через одного
+            Cycle of length 6, three tails of length 1 through one vertex
             '''
             for i in range(6):
                 self.add_edge(i % 6, (i + 1) % 6, 1)
@@ -132,40 +141,58 @@ class PreferenceGraph:
             self.add_edge(7, 2, 1)
             self.add_edge(8, 0, 1)
             
-    def add_other_edges(self, code):
+    def add_other_edges(self, rest_edges_code):
+        '''
+        Parameters:
+            rest_edges_code (str of length(9)) -- info about non-basic edges 
+              for each vertex
+            rest_edges_code[i] in {'0', ..., '4'}
+              '0' -- no more outgoing edges
+              '1', '2' -- one more outgoing edge of weight 2, 
+                          2 cases where it can lead to
+              '3', '4' -- two edges of weight 2 and 3,
+                          2 cases of how to distribute them among 
+                          two possible vertexes
+        '''
         for i in range(9):
             neighbours = {(i + 1) % 9, (i + 4) % 9, (i + 7) % 9}
-            neighbours.remove(self.edges[i][0]._to)
-            neighbours = list(neighbours) # список из двух вершин, 
-            # в которые могут идти ребра веса 2 и 3 из вершины i
-            if code[i] == '0':
+            neighbours.remove(self.edges[i][0]._to) 
+            ''' 
+            List of 2 vertexes, 
+            to which the edges of weight 2 and 3 can lead
+            '''
+            neighbours = list(neighbours)
+
+            if rest_edges_code[i] == '0':
                 continue
-            if code[i] == '1':
+            if rest_edges_code[i] == '1':
                 self.edges[i].append(Edge(i, neighbours[0], 2))
-            if code[i] == '2':
+            if rest_edges_code[i] == '2':
                 self.edges[i].append(Edge(i, neighbours[1], 2))
-            if code[i] == '3':
+            if rest_edges_code[i] == '3':
                 self.edges[i].append(Edge(i, neighbours[0], 2))
                 self.edges[i].append(Edge(i, neighbours[1], 3))
-            if code[i] == '4':
+            if rest_edges_code[i] == '4':
                 self.edges[i].append(Edge(i, neighbours[0], 3))
                 self.edges[i].append(Edge(i, neighbours[1], 2))
     
-    def check_threes_comb(self, comb):
+    def check_triplets_comb(self, comb):
         '''
-        На вход дается трисочетание из одной, двух или трех троек.
-        Проверяем по ребрам, возможно ли оно для данного графа.
-        Если возможно, то возвращаем список длины 9, 
-            где на i-м месте стоит вес ребра, которое 
-            в трисочетании исходит из i-й вершины
-            (если ничего не исходит, то вес 4)
-        Если невозможно, возвращаем []    
+        Parameters:
+            comb -- combination of 1, 2 or 3 triplets of man, women and dog
+
+        Checks if all the triplets in the given combination are families in graph
+          (= graph has all the necessery edges)
+        If it has, returns the list 'weights' of lenth 9,
+            weights[i] -- weigth of the outgoing edge from vertex i 
+              in combination    
+        If it has not, returns []  
         '''
         weights = [4] * 9
-        for three in comb:
-            man = [it for it in three if it % 3 == 0][0]
-            woman = [it for it in three if it % 3 == 1][0]
-            dog = [it for it in three if it % 3 == 2][0]
+        for triplet in comb:
+            man = [it for it in triplet if it % 3 == 0][0]
+            woman = [it for it in triplet if it % 3 == 1][0]
+            dog = [it for it in triplet if it % 3 == 2][0]
             
             edges1 = list(filter(
                 lambda e: e._from == man and e._to == woman, self.edges[man]))
@@ -185,22 +212,24 @@ class PreferenceGraph:
     
     def find_blocking_for_comb(self, comb):
         '''
-        Дается трисочетание.
-        Проверяем, возможно ли оно в данном графе 
-        через check_threes_comb.
-        Если возможно, то получаем в ответ веса.
-        Далее пробегаемся по всем возможным тройкам,
-        проверяем, есть ли среди них блокирующая.
-        (возвращает True если есть и False если нет)
+        Parameters:
+            comb -- combination of 1, 2 or 3 triplets of man, women and dog
+
+        Checks if this combination is possible in graph 
+          via check_triplets_comb method and get edges' weights if it is.
+        Then goes over all possible triplets,
+          checks if there is a blocking one among them.
+        Returns True if there is and False otherwise
         '''
-        weights = self.check_threes_comb(comb)
+        weights = self.check_triplets_comb(comb)
         if weights == []:
             return None
-        threes = np.array(np.meshgrid([0, 3, 6], [1, 4, 7], [2, 8, 5])).T.reshape(-1, 3)
-        for three in threes:
-            man = [it for it in three if it % 3 == 0][0]
-            woman = [it for it in three if it % 3 == 1][0]
-            dog = [it for it in three if it % 3 == 2][0]
+        triplets = np.array(
+            np.meshgrid([0, 3, 6], [1, 4, 7], [2, 8, 5])).T.reshape(-1, 3)
+        for triplet in triplets:
+            man = [it for it in triplet if it % 3 == 0][0]
+            woman = [it for it in triplet if it % 3 == 1][0]
+            dog = [it for it in triplet if it % 3 == 2][0]
             
             edges1 = list(filter(
                 lambda e: e._from == man and e._to == woman, self.edges[man])) 
@@ -215,4 +244,4 @@ class PreferenceGraph:
             and weights[edges2[0]._from] > edges2[0]._weight \
             and weights[edges3[0]._from] > edges3[0]._weight:
                 return True
-        return False        
+        return False
