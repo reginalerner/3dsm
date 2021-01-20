@@ -1,1 +1,2 @@
 # 3dsm
+Problem 3DSMI-CYC is the problem of finding a stable matching for 3 genders and incomplete preference lists. In [1](https://www.researchgate.net/publication/220223450_Three-Sided_Stable_Matchings_with_Cyclic_Preferences) P. Biro and E. McDermid stated the problem of constructing an instance with no weakly stable matching for n < 6 (the number of representatives for each gender). In this project we find the instances for n = 3 and visualize them using python tools.
